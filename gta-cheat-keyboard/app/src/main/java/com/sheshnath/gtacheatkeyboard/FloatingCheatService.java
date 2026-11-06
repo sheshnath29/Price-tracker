@@ -60,7 +60,17 @@ public class FloatingCheatService extends Service {
             return START_NOT_STICKY;
         }
         startInForeground();
-        if (root == null) showOverlay();
+        if (root == null) {
+            showOverlay();
+            // Connect the virtual USB keyboard now so the first cheat is instant.
+            worker.execute(() -> {
+                boolean ok = HidKeyboard.ensure();
+                main.post(() -> Toast.makeText(this, ok
+                        ? "Virtual USB keyboard connected ✓"
+                        : "Virtual USB keyboard unavailable - using input command",
+                        Toast.LENGTH_LONG).show());
+            });
+        }
         running = true;
         return START_STICKY;
     }
@@ -359,7 +369,7 @@ public class FloatingCheatService extends Service {
         worker.execute(() -> {
             String error = KeyInjector.type(code);
             main.post(() -> Toast.makeText(this,
-                    error == null ? "Cheat sent: " + label : error,
+                    error == null ? "Cheat sent (" + KeyInjector.lastMethod + "): " + label : error,
                     error == null ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show());
         });
     }
@@ -371,6 +381,7 @@ public class FloatingCheatService extends Service {
             wm.removeView(root);
             root = null;
         }
+        worker.execute(HidKeyboard::stop);
         worker.shutdown();
         super.onDestroy();
     }

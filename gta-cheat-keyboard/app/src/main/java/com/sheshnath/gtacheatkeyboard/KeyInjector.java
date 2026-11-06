@@ -75,12 +75,41 @@ final class KeyInjector {
      * Returns null on success, otherwise an error message.
      */
     static String type(String code) {
+        StringBuilder letters = new StringBuilder();
+        for (char c : code.toUpperCase().toCharArray()) {
+            if (c >= 'A' && c <= 'Z') letters.append(c);
+        }
+        int[] usages = new int[letters.length()];
+        for (int i = 0; i < usages.length; i++) usages[i] = 4 + (letters.charAt(i) - 'A');
+        if (hid(usages)) return null;
         return run(commandFor(code));
     }
 
     /** Presses one key by key code (e.g. ENTER, BACKSPACE). Blocking. */
     static String pressKey(int keyCode) {
+        int usage = -1;
+        if (keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z) {
+            usage = 4 + (keyCode - KeyEvent.KEYCODE_A);
+        } else if (keyCode == KeyEvent.KEYCODE_ENTER) {
+            usage = 40;
+        } else if (keyCode == KeyEvent.KEYCODE_DEL) {
+            usage = 42;
+        } else if (keyCode == KeyEvent.KEYCODE_SPACE) {
+            usage = 44;
+        }
+        if (usage >= 0 && hid(new int[]{usage})) return null;
         return run(commandForKeys(" " + keyCode));
+    }
+
+    /** "USB keyboard" when the virtual HID keyboard works, else "input command". */
+    static volatile String lastMethod = "";
+
+    /** Tries the virtual USB keyboard first: games treat it like a real keyboard. */
+    private static boolean hid(int[] usages) {
+        boolean ok = HidKeyboard.press(usages,
+                (Integer) SPEEDS[speed][1], (Integer) SPEEDS[speed][2]);
+        lastMethod = ok ? "USB keyboard" : "input command";
+        return ok;
     }
 
     private static String run(String cmd) {
