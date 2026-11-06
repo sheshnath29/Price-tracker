@@ -10,8 +10,8 @@ android {
         applicationId 'com.sheshnath.gtacheatkeyboard'
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode 2
+        versionName '2.0'
     }
 
     buildTypes {
@@ -26,4 +26,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+}
+
+dependencies {
+    // Shizuku lets the app inject key presses into the game without root.
+    implementation 'dev.rikka.shizuku:api:13.1.5'
+    implementation 'dev.rikka.shizuku:provider:13.1.5'
 }
