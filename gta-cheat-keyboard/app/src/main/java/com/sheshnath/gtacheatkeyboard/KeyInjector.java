@@ -32,9 +32,15 @@ final class KeyInjector {
         }
     }
 
-    /** How long each key is held down, and the gap between keys (ms). */
-    static final int HOLD_MS = 80;
-    static final int GAP_MS = 80;
+    /** Typing speeds: {name, ms each key is held down, ms pause between keys}. */
+    static final Object[][] SPEEDS = {
+            {"Fast", 60, 60},
+            {"Normal", 120, 150},
+            {"Slow", 200, 300},
+            {"Very slow", 300, 600},
+    };
+    /** Index into SPEEDS; set from the floating keyboard's Speed button. */
+    static volatile int speed = 2;
 
     /**
      * Builds the shell command for an A-Z code.
@@ -56,8 +62,12 @@ final class KeyInjector {
 
     /** k is a space-prefixed list of key codes, e.g. " 36 33". */
     private static String commandForKeys(String k) {
-        return "input keyboard keyevent --duration " + HOLD_MS + " --delay " + GAP_MS + k
-                + " || for k in" + k + "; do input keyboard keyevent $k; sleep 0.1; done";
+        int hold = (Integer) SPEEDS[speed][1];
+        String gap = String.format(java.util.Locale.US, "%.2f", (Integer) SPEEDS[speed][2] / 1000.0);
+        // One key per command so each press is clearly separated; hold it down with
+        // --duration (Android 13+), falling back to a plain press if unsupported.
+        return "for k in" + k + "; do input keyboard keyevent --duration " + hold
+                + " $k 2>/dev/null || input keyboard keyevent $k; sleep " + gap + "; done";
     }
 
     /**

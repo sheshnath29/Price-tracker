@@ -174,6 +174,16 @@ public class FloatingCheatService extends Service {
         Button kbTab = smallButton("⌨ KEYBOARD", "#455A64");
         Button cheatTab = smallButton("★ CHEATS", "#455A64");
         Button close = smallButton("✕", "#B71C1C");
+        final android.content.SharedPreferences prefs =
+                getSharedPreferences("settings", MODE_PRIVATE);
+        KeyInjector.speed = Math.min(prefs.getInt("speed", 2), KeyInjector.SPEEDS.length - 1);
+        Button speedBtn = smallButton("", "#6A1B9A");
+        speedBtn.setText("⏱ " + KeyInjector.SPEEDS[KeyInjector.speed][0]);
+        speedBtn.setOnClickListener(v -> {
+            KeyInjector.speed = (KeyInjector.speed + 1) % KeyInjector.SPEEDS.length;
+            prefs.edit().putInt("speed", KeyInjector.speed).apply();
+            ((Button) v).setText("⏱ " + KeyInjector.SPEEDS[KeyInjector.speed][0]);
+        });
         kbTab.setOnClickListener(v -> {
             keyboard.setVisibility(View.VISIBLE);
             cheats.setVisibility(View.GONE);
@@ -185,6 +195,7 @@ public class FloatingCheatService extends Service {
         close.setOnClickListener(v -> togglePanel());
         tabs.addView(kbTab, weighted(2));
         tabs.addView(cheatTab, weighted(2));
+        tabs.addView(speedBtn, weighted(2));
         tabs.addView(close, weighted(1));
         box.addView(tabs, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
