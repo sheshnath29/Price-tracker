@@ -32,15 +32,28 @@ final class KeyInjector {
         }
     }
 
-    /** Builds "input keyevent 36 33 ..." for an A-Z code. */
+    /** How long each key is held down, and the gap between keys (ms). */
+    static final int HOLD_MS = 80;
+    static final int GAP_MS = 80;
+
+    /**
+     * Builds the shell command for an A-Z code.
+     *
+     * A plain "input keyevent" releases the key ~1 ms after pressing it. The game
+     * polls the keyboard once per frame, so such a tap falls between two frames
+     * and is never seen. "--duration" holds each key down like a real finger
+     * (Android 13+); older Android falls back to one key per command with pauses.
+     */
     static String commandFor(String code) {
-        StringBuilder sb = new StringBuilder("input keyevent");
+        StringBuilder keys = new StringBuilder();
         for (char c : code.toUpperCase().toCharArray()) {
             if (c >= 'A' && c <= 'Z') {
-                sb.append(' ').append(KeyEvent.KEYCODE_A + (c - 'A'));
+                keys.append(' ').append(KeyEvent.KEYCODE_A + (c - 'A'));
             }
         }
-        return sb.toString();
+        String k = keys.toString();
+        return "input keyboard keyevent --duration " + HOLD_MS + " --delay " + GAP_MS + k
+                + " || for k in" + k + "; do input keyboard keyevent $k; sleep 0.1; done";
     }
 
     /**
