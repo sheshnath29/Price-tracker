@@ -106,7 +106,9 @@ public class FloatingCheatService extends Service {
 
         panel = buildPanel();
         panel.setVisibility(View.GONE);
-        root.addView(panel);
+        // Fixed width that fits the screen; otherwise the panel shrinks to the bubble's width.
+        root.addView(panel, new LinearLayout.LayoutParams(
+                panelWidth(), ViewGroup.LayoutParams.WRAP_CONTENT));
 
         params = new WindowManager.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -207,16 +209,18 @@ public class FloatingCheatService extends Service {
         for (String row : QWERTY) {
             LinearLayout line = new LinearLayout(this);
             line.setGravity(Gravity.CENTER);
+            line.setWeightSum(10f); // every key is 1/10 of the width, rows stay centered
             for (char c : row.toCharArray()) {
                 final String key = String.valueOf(c);
                 Button b = smallButton(key, "#37474F");
                 b.setTextSize(15);
                 b.setOnClickListener(v -> sendLetter(key));
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(36), dp(44));
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(44), 1f);
                 lp.setMargins(dp(2), dp(2), dp(2), dp(2));
                 line.addView(b, lp);
             }
-            kb.addView(line);
+            kb.addView(line, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         }
 
         Button clear = smallButton("CLEAR TYPED", "#455A64");
@@ -264,7 +268,7 @@ public class FloatingCheatService extends Service {
 
     private View buildCheatList() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setLayoutParams(new LinearLayout.LayoutParams(dp(400), dp(200)));
+        scroll.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(200)));
 
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
@@ -292,7 +296,23 @@ public class FloatingCheatService extends Service {
     }
 
     private void togglePanel() {
-        panel.setVisibility(panel.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+        boolean show = panel.getVisibility() != View.VISIBLE;
+        panel.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (show) {
+            // Keep the whole panel on screen (handles rotation and a bubble near the edge).
+            int screenW = getResources().getDisplayMetrics().widthPixels;
+            int screenH = getResources().getDisplayMetrics().heightPixels;
+            int w = panelWidth();
+            panel.getLayoutParams().width = w;
+            params.x = Math.max(0, Math.min(params.x, screenW - w));
+            params.y = Math.max(0, Math.min(params.y, screenH - dp(340)));
+            wm.updateViewLayout(root, params);
+        }
+    }
+
+    private int panelWidth() {
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        return Math.min(dp(440), screenW - dp(8));
     }
 
     private void sendCheat(String code, String label) {
