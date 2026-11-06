@@ -26,14 +26,40 @@ final class HidKeyboard {
     private static Process proc;
     private static OutputStream out;
 
+    /** Last output from the hid tool, shown to the user when it fails. */
+    static volatile String lastError = "";
+    private static final StringBuilder output = new StringBuilder();
+
     private static boolean alive() {
         if (proc == null) return false;
         try {
-            proc.exitValue();
-            return false;
-        } catch (IllegalThreadStateException running) {
+            return proc.isAlive();
+        } catch (IllegalArgumentException running) {
+            // Shizuku's remote process reports "still running" (IllegalThreadStateException)
+            // over Binder, which arrives here as a plain IllegalArgumentException.
             return true;
+        } catch (Throwable t) {
+            return false;
         }
+    }
+
+    /** Keeps reading the tool's output so its pipe never fills; remembers the tail. */
+    private static void drain(final Process p) {
+        Thread t = new Thread(() -> {
+            byte[] buf = new byte[512];
+            try (java.io.InputStream in = p.getInputStream()) {
+                int n;
+                while ((n = in.read(buf)) > 0) {
+                    synchronized (output) {
+                        output.append(new String(buf, 0, n, StandardCharsets.UTF_8));
+                        if (output.length() > 400) output.delete(0, output.length() - 400);
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        });
+        t.setDaemon(true);
+        t.start();
     }
 
     private static Process spawn(String cmd) throws Exception {
@@ -51,7 +77,12 @@ final class HidKeyboard {
         if (alive()) return true;
         stop();
         try {
-            proc = spawn("exec hid -");
+            synchronized (output) {
+                output.setLength(0);
+            }
+            proc = spawn("command -v hid >/dev/null || { echo 'hid tool not found'; exit 127; }; "
+                    + "exec hid - 2>&1");
+            drain(proc);
             out = proc.getOutputStream();
             write("{\"id\":1,\"command\":\"register\",\"name\":\"GTA Cheat Keyboard\","
                     + "\"vid\":4660,\"pid\":22136,\"bus\":\"usb\","
@@ -59,11 +90,18 @@ final class HidKeyboard {
             // Give Android time to add the device before the first key press.
             Thread.sleep(1500);
             if (!alive()) {
+                Thread.sleep(200); // let the last output arrive
+                synchronized (output) {
+                    lastError = output.toString().trim();
+                }
+                if (lastError.isEmpty()) lastError = "hid tool exited";
                 stop();
                 return false;
             }
+            lastError = "";
             return true;
         } catch (Throwable t) {
+            lastError = t.getClass().getSimpleName() + ": " + t.getMessage();
             stop();
             return false;
         }

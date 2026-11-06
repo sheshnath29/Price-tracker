@@ -67,7 +67,7 @@ public class FloatingCheatService extends Service {
                 boolean ok = HidKeyboard.ensure();
                 main.post(() -> Toast.makeText(this, ok
                         ? "Virtual USB keyboard connected ✓"
-                        : "Virtual USB keyboard unavailable - using input command",
+                        : "Virtual USB keyboard unavailable: " + HidKeyboard.lastError,
                         Toast.LENGTH_LONG).show());
             });
         }
