@@ -51,7 +51,11 @@ final class KeyInjector {
                 keys.append(' ').append(KeyEvent.KEYCODE_A + (c - 'A'));
             }
         }
-        String k = keys.toString();
+        return commandForKeys(keys.toString());
+    }
+
+    /** k is a space-prefixed list of key codes, e.g. " 36 33". */
+    private static String commandForKeys(String k) {
         return "input keyboard keyevent --duration " + HOLD_MS + " --delay " + GAP_MS + k
                 + " || for k in" + k + "; do input keyboard keyevent $k; sleep 0.1; done";
     }
@@ -61,7 +65,15 @@ final class KeyInjector {
      * Returns null on success, otherwise an error message.
      */
     static String type(String code) {
-        String cmd = commandFor(code);
+        return run(commandFor(code));
+    }
+
+    /** Presses one key by key code (e.g. ENTER, BACKSPACE). Blocking. */
+    static String pressKey(int keyCode) {
+        return run(commandForKeys(" " + keyCode));
+    }
+
+    private static String run(String cmd) {
         if (shizukuGranted()) {
             try {
                 Method m = Shizuku.class.getDeclaredMethod(

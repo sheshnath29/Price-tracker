@@ -223,11 +223,39 @@ public class FloatingCheatService extends Service {
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         }
 
-        Button clear = smallButton("CLEAR TYPED", "#455A64");
+        // Bottom row: backspace, space, enter, clear the "Typed" display.
+        LinearLayout bottom = new LinearLayout(this);
+        Button back = smallButton("⌫", "#455A64");
+        back.setTextSize(16);
+        back.setOnClickListener(v -> {
+            String shown = typed.getText().toString().substring("Typed: ".length());
+            if (!shown.isEmpty()) typed.setText("Typed: " + shown.substring(0, shown.length() - 1));
+            sendKeyCode(android.view.KeyEvent.KEYCODE_DEL);
+        });
+        Button space = smallButton("SPACE", "#37474F");
+        space.setOnClickListener(v -> sendKeyCode(android.view.KeyEvent.KEYCODE_SPACE));
+        Button enter = smallButton("ENTER ↵", "#2E7D32");
+        enter.setOnClickListener(v -> sendKeyCode(android.view.KeyEvent.KEYCODE_ENTER));
+        Button clear = smallButton("CLEAR", "#455A64");
         clear.setOnClickListener(v -> typed.setText("Typed: "));
-        kb.addView(clear, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
+        bottom.addView(back, weighted(1.5f));
+        bottom.addView(space, weighted(3f));
+        bottom.addView(enter, weighted(2.5f));
+        bottom.addView(clear, weighted(1.5f));
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+        blp.setMargins(0, dp(2), 0, dp(2));
+        kb.addView(bottom, blp);
         return kb;
+    }
+
+    private void sendKeyCode(int keyCode) {
+        worker.execute(() -> {
+            String error = KeyInjector.pressKey(keyCode);
+            if (error != null) {
+                main.post(() -> Toast.makeText(this, error, Toast.LENGTH_LONG).show());
+            }
+        });
     }
 
     private void sendLetter(String key) {
