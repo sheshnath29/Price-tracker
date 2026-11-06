@@ -151,13 +151,120 @@ public class FloatingCheatService extends Service {
         wm.addView(root, params);
     }
 
+    private static final String[] QWERTY = {"QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"};
+    private TextView typed;
+
+    /** Panel with two tabs: an on-screen A-Z keyboard and the one-tap cheat list. */
     private View buildPanel() {
-        ScrollView scroll = new ScrollView(this);
-        scroll.setLayoutParams(new LinearLayout.LayoutParams(dp(210), dp(260)));
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(4), dp(4), dp(4), dp(4));
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(Color.parseColor("#E6121212"));
         bg.setCornerRadius(dp(8));
-        scroll.setBackground(bg);
+        box.setBackground(bg);
+
+        final View keyboard = buildKeyboard();
+        final View cheats = buildCheatList();
+        cheats.setVisibility(View.GONE);
+
+        LinearLayout tabs = new LinearLayout(this);
+        Button kbTab = smallButton("⌨ KEYBOARD", "#455A64");
+        Button cheatTab = smallButton("★ CHEATS", "#455A64");
+        Button close = smallButton("✕", "#B71C1C");
+        kbTab.setOnClickListener(v -> {
+            keyboard.setVisibility(View.VISIBLE);
+            cheats.setVisibility(View.GONE);
+        });
+        cheatTab.setOnClickListener(v -> {
+            keyboard.setVisibility(View.GONE);
+            cheats.setVisibility(View.VISIBLE);
+        });
+        close.setOnClickListener(v -> togglePanel());
+        tabs.addView(kbTab, weighted(2));
+        tabs.addView(cheatTab, weighted(2));
+        tabs.addView(close, weighted(1));
+        box.addView(tabs, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
+
+        box.addView(keyboard);
+        box.addView(cheats);
+        return box;
+    }
+
+    private View buildKeyboard() {
+        LinearLayout kb = new LinearLayout(this);
+        kb.setOrientation(LinearLayout.VERTICAL);
+
+        typed = new TextView(this);
+        typed.setTextColor(Color.parseColor("#A5D6A7"));
+        typed.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        typed.setTextSize(14);
+        typed.setPadding(dp(6), dp(4), dp(6), dp(4));
+        typed.setText("Typed: ");
+        kb.addView(typed);
+
+        for (String row : QWERTY) {
+            LinearLayout line = new LinearLayout(this);
+            line.setGravity(Gravity.CENTER);
+            for (char c : row.toCharArray()) {
+                final String key = String.valueOf(c);
+                Button b = smallButton(key, "#37474F");
+                b.setTextSize(15);
+                b.setOnClickListener(v -> sendLetter(key));
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(36), dp(44));
+                lp.setMargins(dp(2), dp(2), dp(2), dp(2));
+                line.addView(b, lp);
+            }
+            kb.addView(line);
+        }
+
+        Button clear = smallButton("CLEAR TYPED", "#455A64");
+        clear.setOnClickListener(v -> typed.setText("Typed: "));
+        kb.addView(clear, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
+        return kb;
+    }
+
+    private void sendLetter(String key) {
+        CharSequence now = typed.getText();
+        String shown = now.toString().substring("Typed: ".length()) + key;
+        if (shown.length() > 24) shown = shown.substring(shown.length() - 24);
+        typed.setText("Typed: " + shown);
+        worker.execute(() -> {
+            String error = KeyInjector.type(key);
+            if (error != null) {
+                main.post(() -> Toast.makeText(this, error, Toast.LENGTH_LONG).show());
+            }
+        });
+    }
+
+    private Button smallButton(String text, String color) {
+        Button b = new Button(this);
+        b.setAllCaps(false);
+        b.setText(text);
+        b.setTextSize(12);
+        b.setTextColor(Color.WHITE);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setBackgroundColor(Color.parseColor(color));
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
+        b.setMinWidth(0);
+        b.setMinimumWidth(0);
+        b.setPadding(0, 0, 0, 0);
+        return b;
+    }
+
+    private LinearLayout.LayoutParams weighted(float w) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, w);
+        lp.setMargins(dp(2), 0, dp(2), 0);
+        return lp;
+    }
+
+    private View buildCheatList() {
+        ScrollView scroll = new ScrollView(this);
+        scroll.setLayoutParams(new LinearLayout.LayoutParams(dp(400), dp(200)));
 
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);

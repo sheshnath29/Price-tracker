@@ -52,7 +52,9 @@ public class MainActivity extends Activity {
                         + "2. Tap \"Connect Shizuku\" below and choose Allow.\n"
                         + "3. Tap \"Allow floating button\" and turn it on for this app.\n"
                         + "4. Tap \"Start floating button\", then open GTA San Andreas.\n"
-                        + "5. In the game, tap the green GTA bubble and pick a cheat.\n\n"
+                        + "5. In the game, tap the green GTA bubble. A keyboard hovers over the "
+                        + "game - type any cheat letter by letter, or use the CHEATS tab for "
+                        + "one-tap cheats.\n\n"
                         + "After a phone restart, start Shizuku again first."));
 
         status = text("");
